@@ -29,16 +29,13 @@
   const phaseSecs = () => (phase === 0 ? secs : wordSecs);
 
   /* ======================= ROUTING ======================= */
+  const VIEWS = { '#hoc': 'viewPlay', '#danh-van': 'viewSpell', '#hoi-dap': 'viewQA', '#nghe': 'viewListen', '#quan-ly': 'viewManage' };
   function route() {
-    const h = location.hash;
-    const m = h === '#quan-ly' ? 'manage' : h === '#danh-van' ? 'spell' : 'play';
-    $('viewPlay').hidden = m !== 'play';
-    $('viewSpell').hidden = m !== 'spell';
-    $('viewManage').hidden = m !== 'manage';
-    $('tabPlay').setAttribute('aria-current', m === 'play' ? 'page' : 'false');
-    $('tabSpell').setAttribute('aria-current', m === 'spell' ? 'page' : 'false');
-    $('tabManage').setAttribute('aria-current', m === 'manage' ? 'page' : 'false');
-    if (m !== 'play') setPlaying(false);
+    const h = VIEWS[location.hash] ? location.hash : '#hoc';
+    for (const [k, v] of Object.entries(VIEWS)) { const el = $(v); if (el) el.hidden = k !== h; }
+    document.querySelectorAll('.tabs a').forEach(a => a.setAttribute('aria-current', a.getAttribute('href') === h ? 'page' : 'false'));
+    if (h !== '#hoc') setPlaying(false);
+    if (window.speechSynthesis) speechSynthesis.cancel();
   }
   window.addEventListener('hashchange', route);
   route();
@@ -832,4 +829,11 @@
   window.addEventListener('hashchange', () => { if (location.hash === '#danh-van') renderSpell(); });
 
   function setStatus(id, msg, err) { const s = $(id); s.textContent = msg; s.classList.toggle('err', !!err); }
+
+  // Dùng chung cho exercises.js (Hỏi đáp, Nghe)
+  window.FC = {
+    $, sb, BUCKET, imgUrl, speak, beep, shuffled, setStatus, shrink, extOf,
+    speakNow: t => { const was = soundOn; soundOn = true; speak(t); soundOn = was; },
+    topicOptions: () => [...document.querySelectorAll('#topicList option')].map(o => o.value)
+  };
 })();

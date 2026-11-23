@@ -16,6 +16,8 @@
     <nav class="tabs" aria-label="Chế độ">
       <a href="#hoc" id="tabPlay">Học</a>
       <a href="#danh-van" id="tabSpell">Đánh vần</a>
+      <a href="#hoi-dap" id="tabQA">Hỏi đáp</a>
+      <a href="#nghe" id="tabListen">Nghe</a>
       <a href="#quan-ly" id="tabManage">Tạo thẻ</a>
     </nav>
   </header>
@@ -108,6 +110,69 @@
     <div class="empty" id="spellEmpty"><strong>Đang tải từ…</strong><span></span></div>
   </section>
 
+  <!-- ============ MODULE 4: HỎI – ĐÁP ============ -->
+  <section id="viewQA" hidden>
+    <div class="bar">
+      <label>Chủ đề <select id="qaTopic"><option value="">Tất cả</option></select></label>
+      <span class="counter" id="qaCounter" style="margin-left:auto">0 / 0</span>
+    </div>
+    <div id="qaBox" hidden>
+      <div class="ex-card">
+        <img id="qaImg" class="ex-img" alt="Tranh minh hoạ" hidden>
+        <div class="ex-prompt">
+          <span class="ex-label" id="qaLabel"></span>
+          <p id="qaPrompt"></p>
+          <button class="btn ghost ex-say" id="qaSay" aria-label="Nghe câu này"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg> Nghe</button>
+        </div>
+        <p class="ex-task" id="qaTask"></p>
+        <div id="qaArrange" hidden>
+          <div class="ex-line" id="qaLine"></div>
+          <div class="ex-tiles" id="qaTiles"></div>
+        </div>
+        <div id="qaFree" hidden>
+          <textarea class="field ex-text" id="qaText" rows="2" placeholder="Viết câu của em…" autocomplete="off" autocapitalize="sentences" spellcheck="false"></textarea>
+          <div class="row ex-acts">
+            <button class="btn ghost" id="qaMic" hidden>🎤 Nói</button>
+            <button class="btn" id="qaCheck">Kiểm tra</button>
+            <button class="btn ghost" id="qaShow">Xem đáp án mẫu</button>
+          </div>
+          <p class="ex-sample" id="qaSample" hidden></p>
+        </div>
+        <div class="spell-msg" id="qaMsg"></div>
+      </div>
+      <div class="controls">
+        <button class="cbtn" id="qaPrev" aria-label="Bài trước"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+        <button class="btn ghost" id="qaReset">Làm lại</button>
+        <button class="btn" id="qaHint">Gợi ý</button>
+        <button class="cbtn" id="qaNext" aria-label="Bài tiếp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+      </div>
+    </div>
+    <div class="empty" id="qaEmpty"><strong>Đang tải bài…</strong><span></span></div>
+  </section>
+
+  <!-- ============ MODULE 5: NGHE & CHỌN ============ -->
+  <section id="viewListen" hidden>
+    <div class="bar">
+      <label>Chủ đề <select id="lsTopic"><option value="">Tất cả</option></select></label>
+      <span class="counter" id="lsCounter" style="margin-left:auto">0 / 0</span>
+    </div>
+    <div id="lsBox" hidden>
+      <div class="ex-card">
+        <img id="lsImg" class="ex-img" alt="Tranh minh hoạ" hidden>
+        <button class="btn ls-play" id="lsPlay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg> Nghe</button>
+        <p class="ex-question" id="lsQuestion"></p>
+        <div class="choices ls-choices" id="lsChoices"></div>
+        <div class="spell-msg" id="lsMsg"></div>
+        <p class="ex-sample" id="lsScript" hidden></p>
+      </div>
+      <div class="controls">
+        <button class="cbtn" id="lsPrev" aria-label="Bài trước"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+        <button class="cbtn" id="lsNext" aria-label="Bài tiếp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+      </div>
+    </div>
+    <div class="empty" id="lsEmpty"><strong>Đang tải bài…</strong><span></span></div>
+  </section>
+
   <section id="viewManage" hidden>
     <div class="panel" id="loginPanel">
       <h2>Đăng nhập để tạo thẻ</h2>
@@ -152,6 +217,65 @@
       </div>
 
       <div class="panel">
+        <h2>Tạo bài Hỏi – Đáp</h2>
+        <p class="hint">Học sinh đọc câu cho sẵn và viết câu còn lại. Tranh không bắt buộc.</p>
+        <div class="ex-form">
+          <div class="row">
+            <select class="field" id="qfDir" aria-label="Kiểu bài">
+              <option value="answer">Cho câu hỏi → HS viết câu trả lời</option>
+              <option value="question">Cho câu trả lời → HS viết câu hỏi</option>
+            </select>
+            <select class="field" id="qfArr" aria-label="Cách làm">
+              <option value="1">Có từ cho sẵn để sắp xếp</option>
+              <option value="0">HS tự viết / tự nói</option>
+            </select>
+          </div>
+          <input class="field" id="qfPrompt" placeholder="Câu hỏi cho sẵn (vd: How old are you?)">
+          <input class="field" id="qfAnswer" placeholder="Câu trả lời đúng (vd: I am eight years old.)">
+          <div class="row">
+            <input class="field" id="qfTopic" list="topicList" placeholder="Chủ đề" style="flex:1 1 140px">
+            <label class="btn ghost file-btn">Chọn tranh<input type="file" accept="image/*" id="qfImg" hidden></label>
+            <img class="ex-prev" id="qfPrev" alt="" hidden>
+            <button class="btn" id="qfSave">Lưu bài</button>
+          </div>
+        </div>
+        <div class="status" id="qfStatus"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Tạo bài Nghe – Chọn đáp án</h2>
+        <p class="hint">Nhập lời bài nghe, hệ thống tự đọc bằng giọng tiếng Anh. Học sinh nghe rồi chọn đáp án đúng.</p>
+        <div class="ex-form">
+          <textarea class="field" id="lfAudio" rows="3" placeholder="Lời bài nghe (vd: Hello, I'm Mai. I have a red bike.)"></textarea>
+          <input class="field" id="lfQuestion" placeholder="Câu hỏi hiển thị, không bắt buộc (vd: What colour is Mai's bike?)">
+          <input class="field ok-field" id="lfAnswer" placeholder="✓ Đáp án đúng (vd: red)">
+          <div class="row">
+            <input class="field" id="lfW1" placeholder="✗ Đáp án sai 1" style="flex:1 1 120px">
+            <input class="field" id="lfW2" placeholder="✗ Đáp án sai 2" style="flex:1 1 120px">
+            <input class="field" id="lfW3" placeholder="✗ Đáp án sai 3" style="flex:1 1 120px">
+          </div>
+          <div class="row">
+            <input class="field" id="lfTopic" list="topicList" placeholder="Chủ đề" style="flex:1 1 140px">
+            <button class="btn ghost" id="lfTest" type="button">🔊 Nghe thử</button>
+            <label class="btn ghost file-btn">Chọn tranh<input type="file" accept="image/*" id="lfImg" hidden></label>
+            <img class="ex-prev" id="lfPrev" alt="" hidden>
+            <button class="btn" id="lfSave">Lưu bài</button>
+          </div>
+        </div>
+        <div class="status" id="lfStatus"></div>
+      </div>
+
+      <div class="panel">
+        <div class="listhead">
+          <h2>Bài Hỏi đáp & Nghe <span id="exCount" class="muted"></span></h2>
+          <label class="muted">Lọc <select class="field" id="exFilter"><option value="">Tất cả</option><option value="qa">Hỏi đáp</option><option value="listen">Nghe</option></select></label>
+        </div>
+        <p class="hint">Sửa trực tiếp trong ô rồi nhấn Enter. Bấm ảnh để đổi/thêm tranh.</p>
+        <div class="list" id="exList"></div>
+        <div class="status" id="exStatus"></div>
+      </div>
+
+      <div class="panel">
         <div class="listhead">
           <h2>Bộ thẻ <span id="totalCount" class="muted"></span></h2>
           <label class="muted">Lọc <select class="field" id="manageTopic"><option value="">Tất cả</option></select></label>
@@ -167,5 +291,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
+<script src="exercises.js"></script>
 </body>
 </html>

@@ -12,7 +12,7 @@
 *,*::before,*::after{box-sizing:border-box}
 html,body{margin:0;min-height:100%}
 body{background:var(--bg);color:var(--ink);font-family:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.5}
-button,input,select{font:inherit;color:inherit}
+button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 .wrap{max-width:980px;margin:0 auto;padding:16px}
@@ -239,3 +239,65 @@ body.quiz .stage{max-height:calc(100vh - 380px);max-height:calc(100dvh - 380px)}
 /* Thẻ chưa có ảnh trong danh sách */
 .thumb.noimg{border:2px dashed var(--line);background:var(--bg)}
 .thumb.noimg span{opacity:1;background:transparent;color:var(--muted);align-items:center;padding:0}
+
+/* ================= HỎI ĐÁP & NGHE ================= */
+.tabs{flex-wrap:wrap}
+@media (max-width:640px){
+  header{flex-direction:column;align-items:stretch}
+  .tabs{justify-content:space-between}
+  .tabs a{padding:6px 10px;font-size:.88rem}
+}
+.ex-card{background:var(--surface);border:3px solid var(--line);border-radius:22px;padding:18px;display:flex;flex-direction:column;align-items:center;gap:14px}
+.ex-img{max-height:min(34vh,280px);max-width:min(100%,420px);object-fit:contain;background:#fff;border-radius:14px;border:1px solid var(--line)}
+.ex-prompt{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.ex-label{font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--sky-deep)}
+.ex-prompt p,.ex-question{margin:0;font-family:"Baloo 2",system-ui,sans-serif;font-weight:800;font-size:clamp(1.4rem,4.5vw,2.1rem);line-height:1.2;text-align:center}
+.ex-say,.ls-play{display:inline-flex;align-items:center;gap:6px}
+.ex-say svg,.ls-play svg{width:20px;height:20px}
+.ls-play{font-size:1.1rem;padding:12px 26px;border-radius:999px}
+.ls-play svg{width:24px;height:24px}
+.ex-task{margin:0;color:var(--muted);font-weight:600}
+#qaArrange,#qaFree{width:100%;display:flex;flex-direction:column;align-items:center;gap:12px}
+#qaArrange[hidden],#qaFree[hidden]{display:none}
+.ex-line{width:100%;min-height:64px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;padding:10px;
+  border:2px dashed var(--sky);border-radius:16px;background:var(--bg)}
+.ex-line.done{border-style:solid;border-color:#2DBE6C;background:rgba(45,190,108,.08)}
+.ex-tiles{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.chip{font-family:"Baloo 2",system-ui,sans-serif;font-weight:800;font-size:clamp(1.15rem,3.6vw,1.6rem);line-height:1.1;
+  padding:8px 14px;border-radius:12px;border:2px solid transparent}
+.chip.tile-w{background:var(--sky);color:#fff;box-shadow:0 4px 0 var(--sky-deep)}
+.chip.tile-w:active{transform:translateY(3px);box-shadow:0 1px 0 var(--sky-deep)}
+.chip.tile-w.used{visibility:hidden}
+.chip.placed{background:var(--sun);color:#231F20}
+.chip.placed.bad{background:rgba(229,72,77,.12);border-color:#E5484D;color:#E5484D}
+.chip.placed.hinted{background:rgba(155,138,251,.18);border-color:#9B8AFB;color:var(--ink)}
+.chip.placed.ok{background:rgba(45,190,108,.15);border-color:#2DBE6C;color:var(--ink)}
+.chip:disabled{cursor:default}
+.chip-end{font-family:"Baloo 2",system-ui,sans-serif;font-weight:800;font-size:1.6rem;margin-left:-4px}
+.chip-ph{color:var(--muted);font-size:.92rem}
+.ex-text{width:100%;max-width:640px;font-size:1.25rem;resize:vertical;min-height:64px}
+.ex-text.bad{border-color:#E5484D}
+.ex-text.ok{border-color:#2DBE6C}
+.ex-acts{justify-content:center}
+#qaMic.rec{border-color:#E5484D;color:#E5484D}
+.ex-sample{margin:0;padding:8px 14px;border-radius:12px;background:var(--bg);color:var(--ink);font-weight:600;text-align:center;max-width:640px}
+.ls-choices{width:100%;grid-template-columns:repeat(2,1fr)!important}
+@media (max-width:480px){ .ls-choices{grid-template-columns:1fr!important} }
+#viewQA .controls .btn{min-height:48px}
+
+/* Form tạo bài */
+.ex-form{display:flex;flex-direction:column;gap:10px}
+.ex-form .row > select{flex:1 1 220px}
+.ex-form textarea{resize:vertical}
+.file-btn{cursor:pointer;display:inline-flex;align-items:center}
+.ex-prev{width:56px;height:42px;object-fit:contain;background:#fff;border-radius:8px;border:1px solid var(--line)}
+.ok-field{border-color:rgba(45,190,108,.6)}
+.ex-item{align-items:start}
+.ex-item .fields{align-items:center}
+.ex-item .fields textarea{flex:1 1 100%}
+.ex-badge{font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:999px;color:#fff;flex:none}
+.ex-badge.qa{background:#9B8AFB}
+.ex-badge.listen{background:#FF8C42}
+.ex-item .fields .field{flex:1 1 220px}
+.ex-item .fields select.field{flex:1 1 180px}
+.ex-item .fields textarea.field{flex:1 1 100%}
