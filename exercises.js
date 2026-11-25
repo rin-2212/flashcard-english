@@ -708,9 +708,12 @@
   }
   async function askAI(body, statusId, btn) {
     if (btn) { btn.disabled = true; btn.dataset.label = btn.dataset.label || btn.textContent; btn.textContent = '⏳ AI đang làm…'; }
-    setStatus(statusId, 'AI đang xử lý, có thể mất 10–40 giây…');
+    const t0 = Date.now();
+    const tick = setInterval(() => setStatus(statusId, `AI đang nghe và xử lý… ${Math.round((Date.now() - t0) / 1000)} giây (thường 20–90 giây)`), 1000);
     try {
-      const { data, error } = await sb.functions.invoke((window.FC_CONFIG && window.FC_CONFIG.AI_FUNCTION) || 'ai-gen', { body: { level: $('aiLevel').value.trim(), ...body } });
+      const call = sb.functions.invoke((window.FC_CONFIG && window.FC_CONFIG.AI_FUNCTION) || 'ai-gen', { body: { level: $('aiLevel').value.trim(), ...body } });
+      const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Quá 3 phút không có phản hồi. Mở Supabase → Edge Functions → hàm AI → Logs để xem lỗi, rồi thử lại.')), 180000));
+      const { data, error } = await Promise.race([call, timeout]);
       if (error) {
         let m = error.message || String(error);
         try { const j = await error.context.json(); if (j && j.error) m = j.error; } catch (x) {}
@@ -724,7 +727,7 @@
       setStatus(statusId, '✨ AI đã điền xong, bạn kiểm tra lại trước khi lưu nhé.');
       return data.result;
     } catch (e) { setStatus(statusId, 'AI lỗi: ' + (e.message || e), true); return null; }
-    finally { if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label; } }
+    finally { clearInterval(tick); if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label; } }
   }
 
   // Nghe – Điền từ: AI nghe file (chép lời) rồi đọc hình -> đáp án các chỗ trống
@@ -755,8 +758,11 @@
     const imf = $('ffImg').files[0], snd = $('ffSound').files[0];
     if (!imf) { setStatus('ffStatus', 'Chọn hoặc dán hình bài tập trước.', true); return; }
     let image, audio;
-    try { image = await mediaOf(imf, 'image'); audio = await mediaOf(snd, 'audio'); }
-    catch (e) { setStatus('ffStatus', e.message, true); return; }
+    try {
+      setStatus('ffStatus', 'Đang chuẩn bị hình…'); image = await mediaOf(imf, 'image');
+      setStatus('ffStatus', 'Đang nén file nghe…'); audio = await mediaOf(snd, 'audio');
+      if (audio) setStatus('ffStatus', `Đang gửi lên AI (${(audio.data.length * 0.75 / 1048576).toFixed(1)} MB)…`);
+    } catch (e) { setStatus('ffStatus', e.message, true); return; }
     const r = await askAI({ task: 'fill', image, audio }, 'ffStatus', $('ffAI'));
     if (!r) return;
     if (Array.isArray(r.answers)) $('ffAnswers').value = r.answers.join('\n');
