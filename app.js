@@ -405,6 +405,57 @@
     else if (quiz && /^[1-4]$/.test(e.key)) { const b = $('choices').children[+e.key - 1]; if (b && !b.disabled) b.click(); }
   });
 
+
+  /* ---------- Dán hình từ bộ nhớ tạm (copy hình ở web/Zalo/ảnh chụp màn hình rồi dán) ---------- */
+  const PASTE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/></svg>';
+  const namePasted = (blob) => new File([blob], `dan-hinh-${Date.now()}.${(blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg')}`, { type: blob.type || 'image/png' });
+  async function imageFromUrl(url) {
+    try {
+      const r = await fetch(url, { mode: 'cors' });
+      const b = await r.blob();
+      if (b.type.startsWith('image/')) return namePasted(b);
+    } catch (e) {}
+    throw new Error('Trang nguồn không cho tải hình qua link. Hãy bấm chuột phải (hoặc giữ lâu) vào hình → “Sao chép hình ảnh” rồi dán lại.');
+  }
+  // Lấy hình từ sự kiện dán (Ctrl+V) hoặc kéo thả; trả về File hoặc null
+  async function imageFromEvent(dt) {
+    if (!dt) return null;
+    const f = [...(dt.files || [])].find(x => x.type.startsWith('image/'));
+    if (f) return f;
+    const it = [...(dt.items || [])].find(x => x.kind === 'file' && x.type.startsWith('image/'));
+    if (it) { const g = it.getAsFile(); if (g) return namePasted(g); }
+    const html = dt.getData && dt.getData('text/html');
+    const m = html && html.match(/<img[^>]+src=["']([^"']+)["']/i);
+    if (m && /^data:image\//.test(m[1])) { const b = await (await fetch(m[1])).blob(); return namePasted(b); }
+    const url = (dt.getData && (dt.getData('text/uri-list') || dt.getData('text/plain')) || '').trim().split('\n')[0];
+    if (m && /^https?:/.test(m[1])) return imageFromUrl(m[1]);
+    if (/^https?:\/\/\S+\.(png|jpe?g|gif|webp|svg)(\?\S*)?$/i.test(url)) return imageFromUrl(url);
+    return null;
+  }
+  // Nút “Dán”: đọc hình trong bộ nhớ tạm (Chrome, Edge, Safari, Android)
+  async function readClipboardImage() {
+    if (!navigator.clipboard || !navigator.clipboard.read) throw new Error('Trình duyệt này không hỗ trợ nút Dán, hãy bấm Ctrl+V (hoặc giữ lâu → Dán).');
+    let items;
+    try { items = await navigator.clipboard.read(); }
+    catch (e) { throw new Error('Trình duyệt chưa cho đọc bộ nhớ tạm. Hãy cho phép, hoặc bấm Ctrl+V.'); }
+    for (const it of items) {
+      const t = it.types.find(x => x.startsWith('image/'));
+      if (t) return namePasted(await it.getType(t));
+    }
+    for (const it of items) {
+      if (it.types.includes('text/plain')) {
+        const txt = (await (await it.getType('text/plain')).text()).trim();
+        if (/^https?:\/\//.test(txt)) return imageFromUrl(txt);
+      }
+    }
+    throw new Error('Bộ nhớ tạm chưa có hình. Hãy “Sao chép hình ảnh” trước rồi bấm Dán.');
+  }
+  function setInputFile(input, file) {
+    const dt = new DataTransfer(); dt.items.add(file);
+    input.files = dt.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
   /* ======================= MODULE 2: AUTH ======================= */
   function setAuth(s) {
     session = s;
@@ -454,13 +505,22 @@
   $('fileIn').onchange = e => { addFiles(e.target.files); e.target.value = ''; };
   drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
   drop.ondragleave = () => drop.classList.remove('over');
-  drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); addFiles(e.dataTransfer.files); };
+  drop.ondrop = async e => { e.preventDefault(); drop.classList.remove('over'); if (e.dataTransfer.files.length) { addFiles(e.dataTransfer.files); return; } try { const f = await imageFromEvent(e.dataTransfer); if (f) addFiles([f]); } catch (err) { setStatus('addStatus', err.message, true); } };
   // Dán ảnh trực tiếp (Ctrl+V) khi đang ở tab Tạo thẻ
-  document.addEventListener('paste', e => {
-    if ($('viewManage').hidden || $('editor').hidden) return;
-    const files = [...(e.clipboardData?.files || [])];
-    if (files.length) { e.preventDefault(); addFiles(files); }
+  // Ctrl+V ở tab Tạo thẻ (ngoài các form bài tập): thêm hình làm thẻ mới
+  document.addEventListener('paste', async e => {
+    if ($('viewManage').hidden || $('editor').hidden || e.defaultPrevented) return;
+    if (e.target.closest && e.target.closest('.paste-scope, #list, #exList, .ai-panel, #wordForm')) return;
+    const hasImg = [...(e.clipboardData?.items || [])].some(x => x.kind === 'file' && x.type.startsWith('image/'));
+    if (!hasImg) return;
+    e.preventDefault();
+    const f = await imageFromEvent(e.clipboardData).catch(() => null);
+    if (f) addFiles([f]);
   });
+  $('pasteCardBtn').onclick = async () => {
+    try { addFiles([await readClipboardImage()]); setStatus('addStatus', 'Đã dán hình, nhập từ mới rồi bấm Lưu.'); }
+    catch (err) { setStatus('addStatus', err.message, true); }
+  };
   $('clearPending').onclick = () => { pending.forEach(p => URL.revokeObjectURL(p.url)); pending = []; renderPending(); };
 
   // Thu nhỏ ảnh lớn để tiết kiệm dung lượng (giữ nền trong suốt bằng WebP)
@@ -519,14 +579,17 @@
     shown.forEach((c, i) => {
       const el = document.createElement('div'); el.className = 'item';
       el.innerHTML = `<button class="thumb" title="Bấm để đổi ảnh" aria-label="Đổi ảnh"><img alt=""><span>Đổi ảnh</span></button><div class="fields"><input class="field w" aria-label="Từ mới"><input class="field m" aria-label="Nghĩa" placeholder="Nghĩa"><input class="field t" list="topicList" aria-label="Chủ đề" placeholder="Chủ đề"></div>
-        <div class="acts"><button class="ibtn up" aria-label="Lên trên">${ICON_UP}</button><button class="ibtn dn" aria-label="Xuống dưới">${ICON_DOWN}</button><button class="ibtn del" aria-label="Xoá thẻ">${ICON_DEL}</button></div>`;
+        <div class="acts"><button class="ibtn paste" aria-label="Dán ảnh từ bộ nhớ tạm" title="Dán ảnh (đã sao chép)">${PASTE_ICON}</button><button class="ibtn up" aria-label="Lên trên">${ICON_UP}</button><button class="ibtn dn" aria-label="Xuống dưới">${ICON_DOWN}</button><button class="ibtn del" aria-label="Xoá thẻ">${ICON_DEL}</button></div>`;
       const th = el.querySelector('.thumb');
       if (c.url) el.querySelector('img').src = c.url;
       else { th.classList.add('noimg'); el.querySelector('img').remove(); th.querySelector('span').textContent = '+ Ảnh'; th.title = 'Thêm ảnh'; }
       th.onclick = () => pickImageFor(c);
       th.ondragover = e => { e.preventDefault(); th.classList.add('over'); };
       th.ondragleave = () => th.classList.remove('over');
-      th.ondrop = e => { e.preventDefault(); th.classList.remove('over'); const f = e.dataTransfer.files[0]; if (f) replaceImage(c, f); };
+      th.ondrop = async e => { e.preventDefault(); th.classList.remove('over'); try { const f = await imageFromEvent(e.dataTransfer); if (f) replaceImage(c, f); } catch (err) { setStatus('listStatus', err.message, true); } };
+      th.addEventListener('paste', async e => { e.preventDefault(); e.stopPropagation(); try { const f = await imageFromEvent(e.clipboardData); if (f) replaceImage(c, f); } catch (err) { setStatus('listStatus', err.message, true); } });
+      const pb = el.querySelector('.paste');
+      pb.onclick = async () => { try { replaceImage(c, await readClipboardImage()); } catch (err) { setStatus('listStatus', err.message, true); } };
       const w = el.querySelector('.w'), t = el.querySelector('.t'), mm = el.querySelector('.m');
       w.value = c.word || ''; t.value = c.topic || ''; mm.value = c.meaning || '';
       const save = (inp, key) => async () => {
@@ -834,6 +897,9 @@
   window.FC = {
     $, sb, BUCKET, imgUrl, speak, beep, shuffled, setStatus, shrink, extOf,
     speakNow: t => { const was = soundOn; soundOn = true; speak(t); soundOn = was; },
-    topicOptions: () => [...document.querySelectorAll('#topicList option')].map(o => o.value)
+    topicOptions: () => [...document.querySelectorAll('#topicList option')].map(o => o.value),
+    getCards: () => cards,
+    imageFromEvent, readClipboardImage, setInputFile, PASTE_ICON,
+    reloadCards: () => loadCards()
   };
 })();
