@@ -664,7 +664,7 @@
     try {
       setStatus('ffStatus', 'Đang tải hình…');
       const image_path = await uploadImage(imf);
-      const audio_path = af ? await uploadAudio(af, 'ffStatus') : null;
+      const audio_path = af ? await ensureAudioUploaded(af, 'ffStatus') : null;
       const options = $('ffExtra').value.split(/,|\n/).map(x => x.trim()).filter(Boolean);
       const { error } = await sb.from('exercises').insert({ kind: 'fill', image_path, audio_path, audio_text, answer, options, arrange: $('ffBank').value === '1', prompt: $('ffPrompt').value.trim(), topic: $('ffTopic').value.trim(), sort_order: nextOrder() });
       if (error) throw error;
@@ -686,7 +686,7 @@
     try {
       const f = $('lfImg').files[0];
       const image_path = f ? await uploadImage(f) : null;
-      const audio_path = af ? await uploadAudio(af, 'lfStatus') : null;
+      const audio_path = af ? await ensureAudioUploaded(af, 'lfStatus') : null;
       const { error } = await sb.from('exercises').insert({ kind: 'listen', audio_text, audio_path, prompt: $('lfQuestion').value.trim(), answer, options, topic: $('lfTopic').value.trim(), image_path, sort_order: nextOrder() });
       if (error) throw error;
       setStatus('lfStatus', 'Đã lưu bài.');
@@ -700,10 +700,22 @@
 
   /* ======================= ✨ AI (Google Gemini qua Supabase Edge Function) ======================= */
   const toB64 = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); });
-  async function mediaOf(file, kind) {
+  // File nghe: tải lên kho Supabase 1 lần (dùng lại khi bấm Lưu), AI tự lấy từ kho -> không phải gửi file nặng qua hàm
+  const audioCache = new Map();   // File -> path đã tải lên
+  async function ensureAudioUploaded(file, statusId) {
+    if (audioCache.has(file)) return audioCache.get(file);
+    const path = await uploadAudio(file, statusId);
+    audioCache.set(file, path);
+    return path;
+  }
+  async function mediaOf(file, kind, statusId) {
     if (!file) return undefined;
-    const blob = kind === 'audio' ? await compressAudio(file) : await shrink(file);
-    if (blob.size > 15 * 1048576) throw new Error('File quá lớn cho AI (tối đa ~15 MB sau khi nén).');
+    if (kind === 'audio') {
+      const path = await ensureAudioUploaded(file, statusId);
+      return { path, bucket: BUCKET };
+    }
+    const blob = await shrink(file);
+    if (blob.size > 8 * 1048576) throw new Error('Hình quá lớn cho AI.');
     return { data: await toB64(blob), mime: blob.type || file.type };
   }
   async function askAI(body, statusId, btn) {
@@ -760,8 +772,7 @@
     let image, audio;
     try {
       setStatus('ffStatus', 'Đang chuẩn bị hình…'); image = await mediaOf(imf, 'image');
-      setStatus('ffStatus', 'Đang nén file nghe…'); audio = await mediaOf(snd, 'audio');
-      if (audio) setStatus('ffStatus', `Đang gửi lên AI (${(audio.data.length * 0.75 / 1048576).toFixed(1)} MB)…`);
+      audio = await mediaOf(snd, 'audio', 'ffStatus');
     } catch (e) { setStatus('ffStatus', e.message, true); return; }
     const r = await askAI({ task: 'fill', image, audio }, 'ffStatus', $('ffAI'));
     if (!r) return;
@@ -782,7 +793,7 @@
   $('lfSound').addEventListener('change', () => { if ($('lfSound').files[0] && !$('lfAnswer').value.trim() && !$('lfAI').disabled) $('lfAI').click(); });
   $('lfAI').onclick = async () => {
     let image, audio;
-    try { image = await mediaOf($('lfImg').files[0], 'image'); audio = await mediaOf($('lfSound').files[0], 'audio'); }
+    try { image = await mediaOf($('lfImg').files[0], 'image'); audio = await mediaOf($('lfSound').files[0], 'audio', 'lfStatus'); }
     catch (e) { setStatus('lfStatus', e.message, true); return; }
     const text = $('lfAudio').value.trim();
     if (!image && !audio && !text) { setStatus('lfStatus', 'Chọn file nghe, tranh hoặc nhập lời bài nghe trước.', true); return; }
