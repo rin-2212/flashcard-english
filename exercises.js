@@ -710,11 +710,14 @@
     if (btn) { btn.disabled = true; btn.dataset.label = btn.dataset.label || btn.textContent; btn.textContent = '⏳ AI đang làm…'; }
     setStatus(statusId, 'AI đang xử lý, có thể mất 10–40 giây…');
     try {
-      const { data, error } = await sb.functions.invoke('ai-gen', { body: { level: $('aiLevel').value.trim(), ...body } });
+      const { data, error } = await sb.functions.invoke((window.FC_CONFIG && window.FC_CONFIG.AI_FUNCTION) || 'ai-gen', { body: { level: $('aiLevel').value.trim(), ...body } });
       if (error) {
         let m = error.message || String(error);
         try { const j = await error.context.json(); if (j && j.error) m = j.error; } catch (x) {}
-        if (/Failed to send|not found|404/i.test(m)) m = 'Chưa cài hàm AI trên Supabase (xem hướng dẫn: Edge Function “ai-gen”).';
+        const st = error.context && error.context.status;
+        if (st === 404) m = 'Không tìm thấy hàm AI trên Supabase. Kiểm tra AI_FUNCTION trong config.js đúng với tên (slug) của hàm.';
+        else if (/Failed to send/i.test(m)) m = 'Không gọi được hàm “ai-gen” (thường do đang bật Verify JWT, hoặc hàm bị lỗi khi khởi động). Chi tiết: ' + m;
+        else if (st) m = `(${st}) ` + m;
         throw new Error(m);
       }
       if (!data || data.error) throw new Error((data && data.error) || 'AI không trả kết quả');
