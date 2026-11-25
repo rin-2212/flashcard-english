@@ -338,3 +338,27 @@ body.quiz .stage{max-height:calc(100vh - 380px);max-height:calc(100dvh - 380px)}
 .fd-blank.drop-over{border-color:var(--sky);background:rgba(31,166,209,.15);transform:scale(1.03)}
 .fd-clear{flex:none;width:26px;height:26px;border-radius:50%;border:0;background:var(--line);color:var(--ink);font-size:1rem;line-height:1;display:grid;place-items:center}
 .fd-blank.bad .fd-clear{display:none}
+
+/* ✨ AI */
+.ai-btn{border-color:#9B8AFB;color:#7A65F2}
+.ai-panel{border-color:#CFC6FD}
+.ai-go{background:#7A65F2}
+.ai-results{display:grid;gap:8px;margin-top:10px}
+.ai-item{grid-template-columns:auto 1fr;align-items:start}
+.ai-check{width:22px;height:22px;margin-top:8px;accent-color:#7A65F2}
+.ai-item .fields .field{flex:1 1 220px}
+.ai-item .fields textarea.field{flex:1 1 100%}
+
+/* Dán hình */
+.paste-row{margin-top:8px;gap:8px}
+.paste-row .muted{font-size:.85rem}
+.paste-scope.over{border-color:var(--sky);background:rgba(31,166,209,.06)}
+.ibtn.paste svg{width:17px;height:17px}
+.ex-item .acts{flex-direction:column}
+
+/* Kết quả AI cho bài Nghe – Điền từ */
+.ai-detail{border:2px solid #CFC6FD;background:rgba(155,138,251,.07);border-radius:14px;padding:10px 12px;display:grid;gap:6px}
+.ai-detail-h{margin:0 0 2px;font-weight:700;color:#7A65F2;font-size:.92rem}
+.ai-detail-row{display:flex;gap:8px;align-items:flex-start;line-height:1.45}
+.ai-detail-row .fd-num{width:24px;height:24px;font-size:.8rem;margin-top:1px}
+.ai-detail-row b{background:var(--sun);color:#231F20;padding:0 4px;border-radius:4px}

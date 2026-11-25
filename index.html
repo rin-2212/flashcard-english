@@ -231,7 +231,8 @@
           <button class="btn ghost" id="logoutBtn">Đăng xuất</button>
         </div>
         <p class="hint">Chọn một hoặc nhiều ảnh. Tên file được điền sẵn làm từ mới, bạn sửa lại nếu cần.</p>
-        <div class="drop" id="drop" tabindex="0" role="button"><strong>Chọn ảnh</strong> hoặc kéo thả ảnh vào đây</div>
+        <div class="drop" id="drop" tabindex="0" role="button"><strong>Chọn ảnh</strong>, kéo thả, hoặc dán ảnh (Ctrl+V) vào đây</div>
+        <div class="row paste-row"><button class="btn ghost" id="pasteCardBtn" type="button">📋 Dán hình đã sao chép</button><span class="muted">Sao chép hình ở web, Zalo, Drive… rồi bấm nút này hoặc Ctrl+V.</span></div>
         <input type="file" id="fileIn" accept="image/*" multiple hidden>
         <div class="pending" id="pending"></div>
         <div class="row" style="margin-top:12px" id="pendingActions" hidden>
@@ -255,9 +256,9 @@
         <div class="status" id="wordStatus"></div>
       </div>
 
-      <div class="panel">
+      <div class="panel paste-scope" data-img="qfImg">
         <h2>Tạo bài Hỏi – Đáp</h2>
-        <p class="hint">Học sinh đọc câu cho sẵn và viết câu còn lại. Tranh không bắt buộc.</p>
+        <p class="hint">Học sinh đọc câu cho sẵn và viết câu còn lại. Tranh không bắt buộc, có thể dán hình (Ctrl+V) khi đang ở trong khung này.</p>
         <div class="ex-form">
           <div class="row">
             <select class="field" id="qfDir" aria-label="Kiểu bài">
@@ -273,15 +274,17 @@
           <input class="field" id="qfAnswer" placeholder="Câu trả lời đúng (vd: I am eight years old.)">
           <div class="row">
             <input class="field" id="qfTopic" list="topicList" placeholder="Chủ đề" style="flex:1 1 140px">
-            <label class="btn ghost file-btn">Chọn tranh<input type="file" accept="image/*" id="qfImg" hidden></label>
+            <label class="btn ghost file-btn">🖼 Chọn tranh<input type="file" accept="image/*" id="qfImg" hidden></label>
+            <button class="btn ghost paste-btn" type="button" data-for="qfImg">📋 Dán hình</button>
             <img class="ex-prev" id="qfPrev" alt="" hidden>
+            <button class="btn ghost ai-btn" id="qfAI" type="button">✨ AI gợi ý</button>
             <button class="btn" id="qfSave">Lưu bài</button>
           </div>
         </div>
         <div class="status" id="qfStatus"></div>
       </div>
 
-      <div class="panel">
+      <div class="panel paste-scope" data-img="lfImg">
         <h2>Tạo bài Nghe – Chọn đáp án</h2>
         <p class="hint">Nhập lời bài nghe, hệ thống tự đọc bằng giọng tiếng Anh. Học sinh nghe rồi chọn đáp án đúng.</p>
         <div class="ex-form">
@@ -300,26 +303,31 @@
           <div class="row">
             <input class="field" id="lfTopic" list="topicList" placeholder="Chủ đề" style="flex:1 1 140px">
             <button class="btn ghost" id="lfTest" type="button">🔊 Nghe thử</button>
-            <label class="btn ghost file-btn">Chọn tranh<input type="file" accept="image/*" id="lfImg" hidden></label>
+            <label class="btn ghost file-btn">🖼 Chọn tranh<input type="file" accept="image/*" id="lfImg" hidden></label>
+            <button class="btn ghost paste-btn" type="button" data-for="lfImg">📋 Dán hình</button>
             <img class="ex-prev" id="lfPrev" alt="" hidden>
+            <button class="btn ghost ai-btn" id="lfAI" type="button">✨ AI tạo câu hỏi</button>
             <button class="btn" id="lfSave">Lưu bài</button>
           </div>
         </div>
         <div class="status" id="lfStatus"></div>
       </div>
 
-      <div class="panel">
+      <div class="panel paste-scope" data-img="ffImg">
         <h2>Tạo bài Nghe – Điền từ</h2>
-        <p class="hint">Upload hình bài tập và file nghe (tải từ Drive về máy). File WAV sẽ được tự nén cho nhẹ. Nhập đáp án theo thứ tự chỗ trống trong hình.</p>
+        <p class="hint">Chọn hoặc dán hình bài tập, rồi chọn file nghe: <b>AI sẽ tự nghe và điền đáp án</b>, bạn chỉ cần đọc lại và bấm Lưu. File WAV sẽ được tự nén cho nhẹ. Nhập đáp án theo thứ tự chỗ trống trong hình.</p>
         <div class="ex-form">
           <div class="row">
             <label class="btn ghost file-btn">🖼 Chọn hình bài tập<input type="file" accept="image/*" id="ffImg" hidden></label>
+            <button class="btn ghost paste-btn" type="button" data-for="ffImg">📋 Dán hình</button>
             <img class="ex-prev" id="ffPrev" alt="" hidden>
             <label class="btn ghost file-btn">🎵 Chọn file nghe<input type="file" accept="audio/*,.wav,.mp3,.m4a" id="ffSound" hidden></label>
             <span class="muted" id="ffSoundName"></span>
             <button class="btn ghost" id="ffTest" type="button">🔊 Nghe thử</button>
+            <button class="btn ghost ai-btn" id="ffAI" type="button">✨ AI điền đáp án</button>
           </div>
           <textarea class="field" id="ffAnswers" rows="3" placeholder="Đáp án theo thứ tự, mỗi dòng 1 từ hoặc cách nhau bằng dấu phẩy&#10;vd: zoo, animals, animal, photos, drinks, kind, brother, day&#10;Nhiều cách đúng thì dùng dấu /, vd: photo/photos"></textarea>
+          <div class="ai-detail" id="ffDetail" hidden></div>
           <div class="row">
             <select class="field" id="ffBank" aria-label="Từ gợi ý" style="flex:1 1 200px">
               <option value="1">Hiện các từ gợi ý để bấm chọn</option>
@@ -335,6 +343,37 @@
           </div>
         </div>
         <div class="status" id="ffStatus"></div>
+      </div>
+
+      <div class="panel ai-panel">
+        <h2>✨ AI tạo thêm bài</h2>
+        <p class="hint">AI soạn sẵn nhiều bài một lúc. Bạn xem lại, sửa, bỏ chọn bài không ưng rồi mới lưu.</p>
+        <div class="ex-form">
+          <div class="row">
+            <select class="field" id="aiKind" aria-label="Loại bài" style="flex:1 1 200px">
+              <option value="qa">Hỏi đáp (sắp xếp từ)</option>
+              <option value="listenMany">Nghe – Chọn đáp án</option>
+              <option value="words">Từ mới cho Đánh vần</option>
+            </select>
+            <select class="field" id="aiCount" aria-label="Số lượng" style="flex:0 1 110px">
+              <option value="3">3 bài</option><option value="5" selected>5 bài</option><option value="10">10 bài</option>
+            </select>
+            <input class="field" id="aiLevel" value="lớp 2" placeholder="Trình độ (vd: lớp 2)" style="flex:0 1 130px">
+          </div>
+          <textarea class="field" id="aiTheme" rows="2" placeholder="Chủ đề / nội dung (vd: Unit 3 – My house: bedroom, kitchen, bathroom…)"></textarea>
+          <div class="row">
+            <label class="muted" style="flex:1 1 220px">Dùng từ đã có trong chủ đề
+              <select class="field" id="aiFromTopic"><option value="">(không dùng)</option></select></label>
+            <input class="field" id="aiSaveTopic" list="topicList" placeholder="Lưu vào chủ đề" style="flex:1 1 160px">
+            <button class="btn ai-go" id="aiGo" type="button">✨ Tạo</button>
+          </div>
+        </div>
+        <div class="status" id="aiStatus"></div>
+        <div class="ai-results" id="aiResults"></div>
+        <div class="row" id="aiSaveRow" hidden style="margin-top:10px">
+          <button class="btn" id="aiSave">Lưu các mục đã chọn</button>
+          <button class="btn ghost" id="aiClear">Bỏ kết quả</button>
+        </div>
       </div>
 
       <div class="panel">

@@ -581,6 +581,42 @@
   function clearPreview(inputId, imgId) { $(inputId).value = ''; const img = $(imgId); img.hidden = true; if (img.dataset.url) URL.revokeObjectURL(img.dataset.url); }
   bindPreview('qfImg', 'qfPrev'); bindPreview('lfImg', 'lfPrev'); bindPreview('ffImg', 'ffPrev');
 
+  // Dán hình cho các form: nút “📋 Dán hình”, Ctrl+V trong khung, hoặc kéo thả hình từ trang khác
+  const statusOf = { qfImg: 'qfStatus', lfImg: 'lfStatus', ffImg: 'ffStatus' };
+  function giveImage(inputId, file) {
+    FC.setInputFile($(inputId), file);
+    setStatus(statusOf[inputId], '✓ Đã nhận hình.');
+  }
+  document.querySelectorAll('.paste-btn').forEach(b => {
+    b.onclick = async () => {
+      try { giveImage(b.dataset.for, await FC.readClipboardImage()); }
+      catch (err) { setStatus(statusOf[b.dataset.for], err.message, true); }
+    };
+  });
+  document.querySelectorAll('.paste-scope').forEach(panel => {
+    const id = panel.dataset.img;
+    panel.addEventListener('paste', async e => {
+      const hasImg = [...(e.clipboardData?.items || [])].some(x => x.kind === 'file' && x.type.startsWith('image/'));
+      if (!hasImg) return;                     // dán chữ vào ô chữ thì vẫn bình thường
+      e.preventDefault();
+      try { const f = await FC.imageFromEvent(e.clipboardData); if (f) giveImage(id, f); }
+      catch (err) { setStatus(statusOf[id], err.message, true); }
+    });
+    panel.addEventListener('dragover', e => { if (e.target.closest('textarea,input')) return; e.preventDefault(); panel.classList.add('over'); });
+    panel.addEventListener('dragleave', e => { if (!panel.contains(e.relatedTarget)) panel.classList.remove('over'); });
+    panel.addEventListener('drop', async e => {
+      panel.classList.remove('over');
+      if (e.target.closest('textarea,input')) return;
+      e.preventDefault();
+      const dt = e.dataTransfer;
+      const audio = [...dt.files].find(f => f.type.startsWith('audio/') || /\.(wav|mp3|m4a|ogg)$/i.test(f.name));
+      const snd = panel.querySelector('input[type=file][accept^="audio"]');
+      if (audio && snd) { FC.setInputFile(snd, audio); }
+      try { const f = await FC.imageFromEvent(dt); if (f) giveImage(id, f); }
+      catch (err) { setStatus(statusOf[id], err.message, true); }
+    });
+  });
+
   const qfLabels = () => {
     const q = $('qfDir').value === 'question';
     $('qfPrompt').placeholder = q ? 'Câu trả lời cho sẵn (vd: I am eight years old.)' : 'Câu hỏi cho sẵn (vd: How old are you?)';
@@ -635,6 +671,7 @@
       setStatus('ffStatus', 'Đã lưu bài.');
       ['ffAnswers', 'ffExtra', 'ffPrompt', 'ffAudio'].forEach(id => ($(id).value = ''));
       clearPreview('ffImg', 'ffPrev'); clearSound('ffSound', 'ffSoundName');
+      $('ffDetail').hidden = true;
       load();
     } catch (e) { setStatus('ffStatus', 'Không lưu được: ' + (e.message || e), true); }
     $('ffSave').disabled = false;
@@ -658,6 +695,180 @@
       load();
     } catch (e) { setStatus('lfStatus', 'Không lưu được: ' + (e.message || e), true); }
     $('lfSave').disabled = false;
+  };
+
+
+  /* ======================= ✨ AI (Google Gemini qua Supabase Edge Function) ======================= */
+  const toB64 = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); });
+  async function mediaOf(file, kind) {
+    if (!file) return undefined;
+    const blob = kind === 'audio' ? await compressAudio(file) : await shrink(file);
+    if (blob.size > 15 * 1048576) throw new Error('File quá lớn cho AI (tối đa ~15 MB sau khi nén).');
+    return { data: await toB64(blob), mime: blob.type || file.type };
+  }
+  async function askAI(body, statusId, btn) {
+    if (btn) { btn.disabled = true; btn.dataset.label = btn.dataset.label || btn.textContent; btn.textContent = '⏳ AI đang làm…'; }
+    setStatus(statusId, 'AI đang xử lý, có thể mất 10–40 giây…');
+    try {
+      const { data, error } = await sb.functions.invoke('ai-gen', { body: { level: $('aiLevel').value.trim(), ...body } });
+      if (error) {
+        let m = error.message || String(error);
+        try { const j = await error.context.json(); if (j && j.error) m = j.error; } catch (x) {}
+        if (/Failed to send|not found|404/i.test(m)) m = 'Chưa cài hàm AI trên Supabase (xem hướng dẫn: Edge Function “ai-gen”).';
+        throw new Error(m);
+      }
+      if (!data || data.error) throw new Error((data && data.error) || 'AI không trả kết quả');
+      setStatus(statusId, '✨ AI đã điền xong, bạn kiểm tra lại trước khi lưu nhé.');
+      return data.result;
+    } catch (e) { setStatus(statusId, 'AI lỗi: ' + (e.message || e), true); return null; }
+    finally { if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label; } }
+  }
+
+  // Nghe – Điền từ: AI nghe file (chép lời) rồi đọc hình -> đáp án các chỗ trống
+  function showFillDetail(r) {
+    const box = $('ffDetail'); box.innerHTML = '';
+    const det = Array.isArray(r.details) && r.details.length ? r.details : (r.answers || []).map((a, i) => ({ n: i + 1, answer: a, sentence: '' }));
+    if (!det.length) { box.hidden = true; return; }
+    const h = document.createElement('p'); h.className = 'ai-detail-h';
+    h.textContent = `AI tìm được ${det.length} chỗ trống. Đọc nhanh để kiểm tra, không cần nghe lại:`;
+    box.appendChild(h);
+    det.forEach((d, i) => {
+      const row = document.createElement('div'); row.className = 'ai-detail-row';
+      const n = document.createElement('span'); n.className = 'fd-num'; n.textContent = d.n || i + 1;
+      const t = document.createElement('span');
+      const ans = String(d.answer || '');
+      const sen = String(d.sentence || '');
+      const k = ans ? sen.toLowerCase().indexOf(ans.split('/')[0].toLowerCase()) : -1;
+      if (k >= 0) {
+        t.append(sen.slice(0, k));
+        const bEl = document.createElement('b'); bEl.textContent = sen.slice(k, k + ans.split('/')[0].length); t.append(bEl, sen.slice(k + ans.split('/')[0].length));
+      } else { const bEl = document.createElement('b'); bEl.textContent = ans; t.append(bEl, sen ? ' — ' + sen : ''); }
+      row.append(n, t);
+      box.appendChild(row);
+    });
+    box.hidden = false;
+  }
+  async function runFillAI() {
+    const imf = $('ffImg').files[0], snd = $('ffSound').files[0];
+    if (!imf) { setStatus('ffStatus', 'Chọn hoặc dán hình bài tập trước.', true); return; }
+    let image, audio;
+    try { image = await mediaOf(imf, 'image'); audio = await mediaOf(snd, 'audio'); }
+    catch (e) { setStatus('ffStatus', e.message, true); return; }
+    const r = await askAI({ task: 'fill', image, audio }, 'ffStatus', $('ffAI'));
+    if (!r) return;
+    if (Array.isArray(r.answers)) $('ffAnswers').value = r.answers.join('\n');
+    if (r.transcript) $('ffAudio').value = r.transcript;
+    if (Array.isArray(r.extra) && !$('ffExtra').value.trim()) $('ffExtra').value = r.extra.join(', ');
+    if (r.instruction && !$('ffPrompt').value.trim()) $('ffPrompt').value = r.instruction;
+    showFillDetail(r);
+    setStatus('ffStatus', snd ? '✨ AI đã nghe file và điền đáp án. Kiểm tra nhanh danh sách bên dưới rồi bấm Lưu.' : '⚠ Không có file nghe nên AI chỉ đoán từ hình. Nên chọn file nghe để chính xác hơn.', !snd);
+  }
+  $('ffAI').onclick = runFillAI;
+  // Chọn đủ hình + file nghe là AI tự chạy (khi chưa có đáp án)
+  const autoFill = () => { if ($('ffImg').files[0] && $('ffSound').files[0] && !$('ffAnswers').value.trim() && !$('ffAI').disabled) runFillAI(); };
+  $('ffImg').addEventListener('change', autoFill);
+  $('ffSound').addEventListener('change', autoFill);
+
+  // Nghe – Chọn: từ file nghe (hoặc lời bài) + tranh -> câu hỏi và đáp án
+  $('lfSound').addEventListener('change', () => { if ($('lfSound').files[0] && !$('lfAnswer').value.trim() && !$('lfAI').disabled) $('lfAI').click(); });
+  $('lfAI').onclick = async () => {
+    let image, audio;
+    try { image = await mediaOf($('lfImg').files[0], 'image'); audio = await mediaOf($('lfSound').files[0], 'audio'); }
+    catch (e) { setStatus('lfStatus', e.message, true); return; }
+    const text = $('lfAudio').value.trim();
+    if (!image && !audio && !text) { setStatus('lfStatus', 'Chọn file nghe, tranh hoặc nhập lời bài nghe trước.', true); return; }
+    const r = await askAI({ task: 'listen', image, audio, text }, 'lfStatus', $('lfAI'));
+    if (!r) return;
+    if (r.transcript) $('lfAudio').value = r.transcript;
+    if (r.question) $('lfQuestion').value = r.question;
+    if (r.answer) $('lfAnswer').value = r.answer;
+    (r.wrong || []).slice(0, 3).forEach((w, i) => ($('lfW' + (i + 1)).value = w));
+  };
+
+  // Hỏi – Đáp: từ tranh / chủ đề -> 1 cặp câu
+  $('qfAI').onclick = async () => {
+    let image;
+    try { image = await mediaOf($('qfImg').files[0], 'image'); } catch (e) { setStatus('qfStatus', e.message, true); return; }
+    const theme = [$('qfTopic').value, $('qfPrompt').value].filter(Boolean).join(' – ');
+    if (!image && !theme) { setStatus('qfStatus', 'Chọn tranh hoặc nhập chủ đề trước.', true); return; }
+    const r = await askAI({ task: 'qa1', image, theme }, 'qfStatus', $('qfAI'));
+    if (!r) return;
+    const q = $('qfDir').value === 'question';
+    $('qfPrompt').value = q ? r.answer : r.question;
+    $('qfAnswer').value = q ? r.question : r.answer;
+  };
+
+  // Tạo hàng loạt
+  let aiItems = [], aiKindDone = '';
+  function aiFillTopics() {
+    const sel = $('aiFromTopic'), cur = sel.value;
+    const ts = [...new Set(FC.getCards().map(c => (c.topic || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi', { numeric: true }));
+    sel.length = 1; ts.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; sel.appendChild(o); });
+    sel.value = ts.includes(cur) ? cur : '';
+  }
+  $('aiFromTopic').addEventListener('focus', aiFillTopics);
+  $('aiFromTopic').onchange = () => { if (!$('aiSaveTopic').value) $('aiSaveTopic').value = $('aiFromTopic').value; };
+  $('aiGo').onclick = async () => {
+    const kind = $('aiKind').value, t = $('aiFromTopic').value;
+    const words = t ? FC.getCards().filter(c => (c.topic || '').trim() === t).map(c => c.word) : (kind === 'words' ? FC.getCards().map(c => c.word) : []);
+    const theme = $('aiTheme').value.trim() || t;
+    if (!theme && !words.length) { setStatus('aiStatus', 'Nhập chủ đề hoặc chọn chủ đề có sẵn.', true); return; }
+    const r = await askAI({ task: kind, theme, words, count: $('aiCount').value }, 'aiStatus', $('aiGo'));
+    if (!r || !Array.isArray(r.items)) return;
+    const have = new Set(FC.getCards().map(c => norm(c.word)));
+    aiItems = r.items.map(x => ({ ...x, on: kind !== 'words' || !have.has(norm(x.word)) }));
+    aiKindDone = kind;
+    renderAI();
+  };
+  function renderAI() {
+    const box = $('aiResults'); box.innerHTML = '';
+    $('aiSaveRow').hidden = !aiItems.length;
+    aiItems.forEach((it, i) => {
+      const row = document.createElement('div'); row.className = 'item ai-item';
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = it.on; cb.className = 'ai-check';
+      cb.setAttribute('aria-label', 'Chọn mục ' + (i + 1)); cb.onchange = () => (it.on = cb.checked);
+      const f = document.createElement('div'); f.className = 'fields';
+      const inp = (key, ph, area) => {
+        const el = document.createElement(area ? 'textarea' : 'input'); el.className = 'field'; el.placeholder = ph; el.setAttribute('aria-label', ph);
+        if (area) el.rows = 2;
+        el.value = key === 'wrong' ? (it.wrong || []).join(' | ') : (it[key] || '');
+        el.oninput = () => { it[key] = key === 'wrong' ? el.value.split('|').map(s => s.trim()).filter(Boolean) : el.value; };
+        return el;
+      };
+      if (aiKindDone === 'qa') f.append(inp('question', 'Câu hỏi'), inp('answer', 'Câu trả lời'));
+      else if (aiKindDone === 'listenMany') f.append(inp('transcript', 'Lời bài nghe', true), inp('question', 'Câu hỏi'), inp('answer', '✓ Đáp án đúng'), inp('wrong', '✗ Đáp án sai (cách nhau bằng |)'));
+      else {
+        f.append(inp('word', 'Từ'), inp('meaning', 'Nghĩa'));
+        if (!it.on) { const n = document.createElement('span'); n.className = 'muted'; n.textContent = 'đã có'; f.appendChild(n); }
+      }
+      row.append(cb, f);
+      box.appendChild(row);
+    });
+  }
+  $('aiClear').onclick = () => { aiItems = []; renderAI(); setStatus('aiStatus', ''); };
+  $('aiSave').onclick = async () => {
+    const pick = aiItems.filter(x => x.on);
+    if (!pick.length) { setStatus('aiStatus', 'Chưa chọn mục nào.', true); return; }
+    const topic = $('aiSaveTopic').value.trim();
+    $('aiSave').disabled = true;
+    try {
+      let order = nextOrder();
+      if (aiKindDone === 'qa') {
+        const rows = pick.filter(x => x.question && x.answer).map(x => ({ kind: 'qa', direction: 'answer', arrange: true, prompt: x.question.trim(), answer: x.answer.trim(), topic, sort_order: order++ }));
+        const { error } = await sb.from('exercises').insert(rows); if (error) throw error;
+      } else if (aiKindDone === 'listenMany') {
+        const rows = pick.filter(x => x.transcript && x.answer).map(x => ({ kind: 'listen', audio_text: x.transcript.trim(), prompt: (x.question || '').trim(), answer: x.answer.trim(), options: (x.wrong || []).filter(Boolean), topic, sort_order: order++ }));
+        const { error } = await sb.from('exercises').insert(rows); if (error) throw error;
+      } else {
+        const cs = FC.getCards(); let co = (cs.length ? Math.max(...cs.map(c => c.sort_order)) : 0) + 1;
+        const rows = pick.filter(x => x.word).map(x => ({ word: x.word.trim(), meaning: (x.meaning || '').trim(), topic, image_path: null, sort_order: co++ }));
+        const { error } = await sb.from('cards').insert(rows); if (error) throw error;
+        FC.reloadCards();
+      }
+      setStatus('aiStatus', `Đã lưu ${pick.length} mục.`);
+      aiItems = []; renderAI(); load();
+    } catch (e) { setStatus('aiStatus', 'Không lưu được: ' + (e.message || e), true); }
+    $('aiSave').disabled = false;
   };
 
   /* ---------- Danh sách bài: sửa / đổi tranh / xoá ---------- */
@@ -691,8 +902,8 @@
   const picker = document.createElement('input');
   picker.type = 'file'; picker.accept = 'image/*'; picker.hidden = true; document.body.appendChild(picker);
   let pickFor = null;
-  picker.onchange = async () => {
-    const f = picker.files[0], e = pickFor; if (!f || !e) return;
+  picker.onchange = () => { const f = picker.files[0]; if (f && pickFor) replaceExImage(pickFor, f); };
+  async function replaceExImage(e, f) {
     setStatus('exStatus', 'Đang đổi tranh…');
     try {
       const path = await uploadImage(f);
@@ -701,7 +912,7 @@
       if (e.image_path) await sb.storage.from(BUCKET).remove([e.image_path]);
       setStatus('exStatus', 'Đã đổi tranh.'); load();
     } catch (err) { setStatus('exStatus', 'Không đổi được tranh: ' + (err.message || err), true); }
-  };
+  }
 
   const soundPicker = document.createElement('input');
   soundPicker.type = 'file'; soundPicker.accept = 'audio/*,.wav,.mp3,.m4a'; soundPicker.hidden = true; document.body.appendChild(soundPicker);
@@ -807,7 +1018,15 @@
         if (files.length) await sb.storage.from(BUCKET).remove(files);
         setStatus('exStatus', 'Đã xoá.'); load();
       };
-      acts.appendChild(del);
+      const pb = document.createElement('button');
+      pb.className = 'ibtn paste'; pb.setAttribute('aria-label', 'Dán tranh từ bộ nhớ tạm'); pb.title = 'Dán tranh (đã sao chép)';
+      pb.innerHTML = FC.PASTE_ICON;
+      pb.onclick = async () => { try { replaceExImage(e, await FC.readClipboardImage()); } catch (err) { setStatus('exStatus', err.message, true); } };
+      th.addEventListener('paste', async ev => { ev.preventDefault(); ev.stopPropagation(); try { const f = await FC.imageFromEvent(ev.clipboardData); if (f) replaceExImage(e, f); } catch (err) { setStatus('exStatus', err.message, true); } });
+      th.ondragover = ev => { ev.preventDefault(); th.classList.add('over'); };
+      th.ondragleave = () => th.classList.remove('over');
+      th.ondrop = async ev => { ev.preventDefault(); th.classList.remove('over'); try { const f = await FC.imageFromEvent(ev.dataTransfer); if (f) replaceExImage(e, f); } catch (err) { setStatus('exStatus', err.message, true); } };
+      acts.append(pb, del);
       row.append(th, fields, acts);
       box.appendChild(row);
     });
