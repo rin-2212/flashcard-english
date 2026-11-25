@@ -378,18 +378,30 @@
     $('fdTts').hidden = !!e.audioUrl || !e.audio_text;
     $('fdAudioTools').hidden = !e.audioUrl;
     const answers = fdAnswers(e);
+    const bankMode = fdBank(e).length > 0 && !fd.done && !fd.showAns;   // có từ gợi ý: kéo thả / bấm chọn, không cần gõ
     const box = $('fdBlanks'); box.innerHTML = '';
     answers.forEach((ans, i) => {
-      const w = document.createElement('label'); w.className = 'fd-blank';
+      const w = document.createElement('label'); w.className = 'fd-blank'; w.dataset.i = i;
       if (fd.marks[i]) w.classList.add(fd.marks[i]);
+      if (bankMode) { w.classList.add('pick'); if (fd.focus === i && fd.marks[i] !== 'ok') w.classList.add('sel'); }
       w.innerHTML = `<span class="fd-num">${i + 1}</span><input class="field" autocomplete="off" autocapitalize="off" spellcheck="false"><span class="fd-mark">${fd.marks[i] === 'ok' ? ICON_OK : fd.marks[i] === 'bad' ? ICON_BAD : ''}</span>`;
       const inp = w.querySelector('input');
       inp.value = fd.showAns ? ans.split('/')[0] : fd.vals[i];
-      inp.readOnly = fd.done || fd.showAns || fd.marks[i] === 'ok';
+      inp.readOnly = fd.done || fd.showAns || fd.marks[i] === 'ok' || bankMode;
+      if (bankMode) { inp.tabIndex = -1; inp.setAttribute('inputmode', 'none'); }
       inp.setAttribute('aria-label', 'Chỗ trống ' + (i + 1));
       inp.onfocus = () => { fd.focus = i; };
       inp.oninput = () => { fd.vals[i] = inp.value; if (fd.marks[i] === 'bad') { fd.marks[i] = ''; w.classList.remove('bad'); w.querySelector('.fd-mark').innerHTML = ''; } };
       inp.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); const nx = box.querySelectorAll('input')[i + 1]; if (nx) nx.focus(); else fdCheck(); } };
+      if (bankMode) {
+        w.onclick = ev => { ev.preventDefault(); if (fd.marks[i] === 'ok') return; fd.focus = i; fdRender(); };
+        if (fd.vals[i] && fd.marks[i] !== 'ok') {
+          const x = document.createElement('button');
+          x.className = 'fd-clear'; x.type = 'button'; x.textContent = '×'; x.setAttribute('aria-label', 'Xoá từ ở ô ' + (i + 1));
+          x.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); fd.vals[i] = ''; fd.marks[i] = ''; fd.focus = i; fdRender(); };
+          w.appendChild(x);
+        }
+      }
       box.appendChild(w);
     });
     const bank = fdBank(e);
@@ -398,7 +410,8 @@
       const b = document.createElement('button');
       b.className = 'chip bank-w'; b.textContent = word;
       if (fd.vals.some(v => norm(v) === norm(word))) b.classList.add('used');
-      b.onclick = () => fdPut(word);
+      b.onclick = () => { if (b.dataset.dragged) { delete b.dataset.dragged; return; } fdPut(word); };
+      enableDrag(b, word);
       bk.appendChild(b);
     });
     $('fdCheck').disabled = fd.done || fd.showAns;
@@ -413,6 +426,40 @@
     const nxt = fd.vals.findIndex((v, k) => !v && fd.marks[k] !== 'ok');
     fd.focus = nxt >= 0 ? nxt : i;
     fdRender();
+  }
+  function fdPutAt(i, word) {     // thả từ vào đúng ô
+    if (fd.done || fd.showAns || i == null || i >= fd.vals.length || fd.marks[i] === 'ok') return;
+    fd.vals[i] = word; fd.marks[i] = '';
+    const nxt = fd.vals.findIndex((v, k) => !v && fd.marks[k] !== 'ok');
+    fd.focus = nxt >= 0 ? nxt : i;
+    fdRender();
+  }
+  // Kéo thả bằng chuột và cảm ứng (tablet/điện thoại)
+  function enableDrag(chip, word) {
+    chip.addEventListener('pointerdown', ev => {
+      if (ev.button !== 0) return;
+      const sx = ev.clientX, sy = ev.clientY;
+      let ghost = null, over = null;
+      try { chip.setPointerCapture(ev.pointerId); } catch (x) {}
+      const move = e => {
+        if (!ghost && Math.hypot(e.clientX - sx, e.clientY - sy) < 6) return;
+        if (!ghost) { ghost = chip.cloneNode(true); ghost.className = 'chip bank-w drag-ghost'; document.body.appendChild(ghost); chip.classList.add('dragging'); }
+        ghost.style.left = e.clientX + 'px'; ghost.style.top = e.clientY + 'px';
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        const t = el && el.closest('.fd-blank');
+        if (over && over !== t) over.classList.remove('drop-over');
+        over = t && !t.classList.contains('ok') ? t : null;
+        if (over) over.classList.add('drop-over');
+      };
+      const up = () => {
+        chip.removeEventListener('pointermove', move); chip.removeEventListener('pointerup', up); chip.removeEventListener('pointercancel', up);
+        if (!ghost) return;
+        ghost.remove(); chip.classList.remove('dragging'); chip.dataset.dragged = '1';
+        setTimeout(() => delete chip.dataset.dragged, 50);
+        if (over) { over.classList.remove('drop-over'); fdPutAt(+over.dataset.i, word); }
+      };
+      chip.addEventListener('pointermove', move); chip.addEventListener('pointerup', up); chip.addEventListener('pointercancel', up);
+    });
   }
   function fdCheck() {
     const e = fdCur(); if (!e || fd.done) return;
