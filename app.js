@@ -29,7 +29,7 @@
   const phaseSecs = () => (phase === 0 ? secs : wordSecs);
 
   /* ======================= ROUTING ======================= */
-  const VIEWS = { '#hoc': 'viewPlay', '#danh-van': 'viewSpell', '#hoi-dap': 'viewQA', '#nghe': 'viewListen', '#quan-ly': 'viewManage' };
+  const VIEWS = { '#hoc': 'viewPlay', '#danh-van': 'viewSpell', '#hoi-dap': 'viewQA', '#nghe': 'viewListen', '#nghe-dien': 'viewFill', '#quan-ly': 'viewManage' };
   function route() {
     const h = VIEWS[location.hash] ? location.hash : '#hoc';
     for (const [k, v] of Object.entries(VIEWS)) { const el = $(v); if (el) el.hidden = k !== h; }

@@ -18,6 +18,7 @@
       <a href="#danh-van" id="tabSpell">Đánh vần</a>
       <a href="#hoi-dap" id="tabQA">Hỏi đáp</a>
       <a href="#nghe" id="tabListen">Nghe</a>
+      <a href="#nghe-dien" id="tabFill">Nghe điền</a>
       <a href="#quan-ly" id="tabManage">Tạo thẻ</a>
     </nav>
   </header>
@@ -159,6 +160,7 @@
     <div id="lsBox" hidden>
       <div class="ex-card">
         <img id="lsImg" class="ex-img" alt="Tranh minh hoạ" hidden>
+        <audio id="lsAudio" class="ex-audio" controls preload="none" hidden></audio>
         <button class="btn ls-play" id="lsPlay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg> Nghe</button>
         <p class="ex-question" id="lsQuestion"></p>
         <div class="choices ls-choices" id="lsChoices"></div>
@@ -171,6 +173,43 @@
       </div>
     </div>
     <div class="empty" id="lsEmpty"><strong>Đang tải bài…</strong><span></span></div>
+  </section>
+
+  <!-- ============ MODULE 6: NGHE – ĐIỀN TỪ ============ -->
+  <section id="viewFill" hidden>
+    <div class="bar">
+      <label>Chủ đề <select id="fdTopic"><option value="">Tất cả</option></select></label>
+      <span class="counter" id="fdCounter" style="margin-left:auto">0 / 0</span>
+    </div>
+    <div id="fdBox" hidden>
+      <div class="ex-card fd-card">
+        <img id="fdImg" class="fd-img" alt="Hình bài tập" title="Bấm để phóng to / thu nhỏ" hidden>
+        <div class="fd-player">
+          <audio id="fdAudio" class="ex-audio" controls preload="metadata" hidden></audio>
+          <div class="row fd-tools" id="fdAudioTools">
+            <button class="btn ghost" id="fdBack">⟲ Lùi 5 giây</button>
+            <label class="muted">Tốc độ <select class="field" id="fdSpeed">
+              <option value="0.75">Chậm</option><option value="1" selected>Bình thường</option>
+            </select></label>
+          </div>
+          <button class="btn ls-play" id="fdTts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg> Nghe</button>
+        </div>
+        <p class="ex-task" id="fdPrompt"></p>
+        <div class="fd-blanks" id="fdBlanks"></div>
+        <div class="ex-tiles fd-bank" id="fdBank"></div>
+        <div class="row ex-acts">
+          <button class="btn ghost" id="fdReset">Làm lại</button>
+          <button class="btn ghost" id="fdShow">Xem đáp án</button>
+          <button class="btn" id="fdCheck">Kiểm tra</button>
+        </div>
+        <div class="spell-msg" id="fdMsg"></div>
+      </div>
+      <div class="controls">
+        <button class="cbtn" id="fdPrev" aria-label="Bài trước"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+        <button class="cbtn" id="fdNext" aria-label="Bài tiếp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+      </div>
+    </div>
+    <div class="empty" id="fdEmpty"><strong>Đang tải bài…</strong><span></span></div>
   </section>
 
   <section id="viewManage" hidden>
@@ -247,6 +286,10 @@
         <p class="hint">Nhập lời bài nghe, hệ thống tự đọc bằng giọng tiếng Anh. Học sinh nghe rồi chọn đáp án đúng.</p>
         <div class="ex-form">
           <textarea class="field" id="lfAudio" rows="3" placeholder="Lời bài nghe (vd: Hello, I'm Mai. I have a red bike.)"></textarea>
+          <div class="row">
+            <label class="btn ghost file-btn">🎵 Hoặc chọn file nghe (mp3, wav…)<input type="file" accept="audio/*,.wav,.mp3,.m4a" id="lfSound" hidden></label>
+            <span class="muted" id="lfSoundName"></span>
+          </div>
           <input class="field" id="lfQuestion" placeholder="Câu hỏi hiển thị, không bắt buộc (vd: What colour is Mai's bike?)">
           <input class="field ok-field" id="lfAnswer" placeholder="✓ Đáp án đúng (vd: red)">
           <div class="row">
@@ -266,9 +309,38 @@
       </div>
 
       <div class="panel">
+        <h2>Tạo bài Nghe – Điền từ</h2>
+        <p class="hint">Upload hình bài tập và file nghe (tải từ Drive về máy). File WAV sẽ được tự nén cho nhẹ. Nhập đáp án theo thứ tự chỗ trống trong hình.</p>
+        <div class="ex-form">
+          <div class="row">
+            <label class="btn ghost file-btn">🖼 Chọn hình bài tập<input type="file" accept="image/*" id="ffImg" hidden></label>
+            <img class="ex-prev" id="ffPrev" alt="" hidden>
+            <label class="btn ghost file-btn">🎵 Chọn file nghe<input type="file" accept="audio/*,.wav,.mp3,.m4a" id="ffSound" hidden></label>
+            <span class="muted" id="ffSoundName"></span>
+            <button class="btn ghost" id="ffTest" type="button">🔊 Nghe thử</button>
+          </div>
+          <textarea class="field" id="ffAnswers" rows="3" placeholder="Đáp án theo thứ tự, mỗi dòng 1 từ hoặc cách nhau bằng dấu phẩy&#10;vd: zoo, animals, animal, photos, drinks, kind, brother, day&#10;Nhiều cách đúng thì dùng dấu /, vd: photo/photos"></textarea>
+          <div class="row">
+            <select class="field" id="ffBank" aria-label="Từ gợi ý" style="flex:1 1 200px">
+              <option value="1">Hiện các từ gợi ý để bấm chọn</option>
+              <option value="0">Không hiện từ gợi ý (tự gõ)</option>
+            </select>
+            <input class="field" id="ffExtra" placeholder="Từ gợi ý thêm để gây nhiễu (không bắt buộc)" style="flex:2 1 240px">
+          </div>
+          <input class="field" id="ffPrompt" placeholder="Hướng dẫn hiển thị, không bắt buộc (vd: Listen and fill in the blanks.)">
+          <textarea class="field" id="ffAudio" rows="2" placeholder="Lời bài nghe, chỉ dùng khi không có file nghe (máy sẽ đọc)"></textarea>
+          <div class="row">
+            <input class="field" id="ffTopic" list="topicList" placeholder="Chủ đề" style="flex:1 1 140px">
+            <button class="btn" id="ffSave">Lưu bài</button>
+          </div>
+        </div>
+        <div class="status" id="ffStatus"></div>
+      </div>
+
+      <div class="panel">
         <div class="listhead">
           <h2>Bài Hỏi đáp & Nghe <span id="exCount" class="muted"></span></h2>
-          <label class="muted">Lọc <select class="field" id="exFilter"><option value="">Tất cả</option><option value="qa">Hỏi đáp</option><option value="listen">Nghe</option></select></label>
+          <label class="muted">Lọc <select class="field" id="exFilter"><option value="">Tất cả</option><option value="qa">Hỏi đáp</option><option value="listen">Nghe</option><option value="fill">Nghe điền</option></select></label>
         </div>
         <p class="hint">Sửa trực tiếp trong ô rồi nhấn Enter. Bấm ảnh để đổi/thêm tranh.</p>
         <div class="list" id="exList"></div>

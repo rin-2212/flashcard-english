@@ -301,3 +301,29 @@ body.quiz .stage{max-height:calc(100vh - 380px);max-height:calc(100dvh - 380px)}
 .ex-item .fields .field{flex:1 1 220px}
 .ex-item .fields select.field{flex:1 1 180px}
 .ex-item .fields textarea.field{flex:1 1 100%}
+
+/* ================= NGHE – ĐIỀN TỪ ================= */
+.ex-audio{width:100%;max-width:560px}
+.fd-card{gap:12px}
+.fd-img{width:100%;max-width:900px;max-height:52vh;object-fit:contain;background:#fff;border-radius:14px;border:1px solid var(--line);cursor:zoom-in;transition:max-height .2s}
+.fd-img.zoomed{max-height:none;cursor:zoom-out}
+.fd-player{width:100%;display:flex;flex-direction:column;align-items:center;gap:8px}
+.fd-tools{justify-content:center}
+.fd-tools[hidden]{display:none}
+.fd-tools select{padding:4px 8px}
+.fd-blanks{width:100%;max-width:900px;display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.fd-blank{display:flex;align-items:center;gap:8px;padding:6px 8px;border:2px solid var(--line);border-radius:14px;background:var(--bg)}
+.fd-num{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--sky);color:#fff;font-weight:700;font-size:.9rem}
+.fd-blank input{flex:1;min-width:0;font-family:"Baloo 2",system-ui,sans-serif;font-weight:800;font-size:1.25rem;padding:4px 8px;background:var(--surface)}
+.fd-mark{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center}
+.fd-mark:empty{display:none}
+.fd-mark svg{width:16px;height:16px}
+.fd-blank.ok{border-color:#2DBE6C;background:rgba(45,190,108,.1)}
+.fd-blank.ok .fd-mark{background:#2DBE6C;color:#fff}
+.fd-blank.bad{border-color:#E5484D;background:rgba(229,72,77,.08)}
+.fd-blank.bad .fd-mark{background:#E5484D;color:#fff}
+.fd-blank.bad input{color:#E5484D}
+.chip.bank-w{background:var(--surface);border-color:var(--sky);color:var(--ink);font-size:clamp(1rem,3vw,1.3rem);padding:6px 12px}
+.chip.bank-w.used{opacity:.4}
+.ex-audio-row{flex:1 1 100%;gap:6px}
+.ex-badge.fill{background:#2DBE6C}
